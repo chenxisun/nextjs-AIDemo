@@ -1,10 +1,13 @@
 'use client'
 import Image from "next/image";
+import { useRef, useState } from 'react';
+import { createWorker, PSM, createScheduler } from 'tesseract.js';
+// import cv from 'opencv.js'
 import styles from "./page.module.css";
 
 export default function Home() {
-
-  const queryData = async() => {
+  // method one : use 阿里api.
+  const queryData = async(_data) => {
     try {
       const data = await fetch('https://dashscope.aliyuncs.com/api/v1/apps/5ec6f795a4884adfa3bbb7f8f860dc96/completion', {
         method: 'POST',
@@ -14,7 +17,7 @@ export default function Home() {
           },
         body: JSON.stringify({
             input: {
-              prompt: '请将如下内容按json格式输出 全国通用保修专用票 剪刀 2把 40元 电线 3卷 80元 万用表 2个 140元 总计 260元'
+              prompt: _data,
             }
           })
       })
@@ -29,96 +32,105 @@ export default function Home() {
 
   }
 
+  // method two: use tesseract.js
+  const [text, setText] = useState<string>('');
+  const [progress, setProgress] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const canvasRef = useRef(null);
+
+
+  // 图片预处理
+//  async function lightweightProcess (file: File) {
+//   const img = await createImageBitmap(file);
+
+//   const canvas = document.createElement('canvas');
+//   const ctx = canvas.getContext('2d');
+
+//   if(!ctx) {throw new Error('无法获取canvas上下文')};
+//   canvas.width = img.width;
+//   canvas.height = img.height;
+
+//   ctx.drawImage(img, 0, 0);
+//   const imageData = ctx.getImageData(0,0, canvas.width, canvas.height);
+//   const data = imageData.data;
+//   // 简单灰度化和对比度增强
+//   for(let i = 0; i < data.length; i += 4) {
+//     // 灰度化
+//     const r = data[i];
+//     const g = data[i + 1];
+//     const b = data[i + 2];
+//     const gray = 0.299 *  r + 0.578 * g + 0.114 * b;
+//     // const gray = (r + g + b) / 3;
+//     // 对比度增强
+//     // const contrast = 1.5;
+//     // const adjusted = Math.min(255, Math.max(0, (gray - 128) * contrast + 128));
+//     //二值化(简单阈值)
+//     // const threshold = 150;
+//     // const binary = adjusted > threshold ? 255 : 0;
+
+//     data[i] = data[i + 1] = data[i + 2] = gray;
+//     // data[i + 3] = 255; // Alpha通道f
+//   }
+//   ctx.putImageData(imageData, 0, 0);
+//   return canvas.toDataURL('image/jpeg');
+// }
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) { return; };
+    setIsLoading(true);
+    setProgress(0);
+    try {
+      // const processeUrl = await lightweightProcess(file);
+      const scheduler = createScheduler();
+      const worker1 = await createWorker('chi_sim');
+      const worker2 = await createWorker('chi_sim');
+      scheduler.addWorker(worker1);
+      scheduler.addWorker(worker2);
+      await worker1.setParameters({
+        tessedit_pageseg_mode: PSM.AUTO_OSD,
+        // tessedit_char_whitelist: '1234567890/-:.年月日',
+      })
+      const [data1, data2] = await Promise.all([scheduler.addJob('recognize', file), scheduler.addJob('recognize', file)]);
+      const data = `${data1.data.text} ${data2.data.text}`;
+      debugger
+      setText(data);
+      console.log('=========>data', data);
+      const result = await queryData(data);
+      debugger
+      await scheduler.terminate();
+    } catch(error) {
+      console.log('OCR Error: ', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+
   return (
     <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        11111111111111111111111
-        <button onClick={queryData}>get data</button>
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+      <h1>OCR with Tesseract.js</h1>
+      {/* <button onClick={queryData}>get data</button> */}
+      <input 
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        disabled={isLoading}
+      />
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+      {isLoading && (
+        <div>
+          <progress value={progress} max='100' />
+          <span>{progress}%</span>
         </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
+      {text && (
+        <div>
+          <h2>识别结果</h2>
+          <pre>{text}</pre>
+        </div>
+      )}
+      <canvas ref={canvasRef} style={{ display: 'none' }}/>
     </div>
   );
 }
