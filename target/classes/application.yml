@@ -1,0 +1,12 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 20MB  # 单个文件最大 20MB
+      max-request-size: 50MB  # 总请求最大 50MB
+  ai:
+    dashscope:
+      api-key: sk-7d51bdd255db481eb9367dc503ef5a17 # 从环境变量获取，避免硬编码
+
+
+dashscope:
+  api-key: sk-7d51bdd255db481eb9367dc503ef5a17 # 从环境变量获取，避免硬编码

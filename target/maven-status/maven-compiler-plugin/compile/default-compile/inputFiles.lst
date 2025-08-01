@@ -1,0 +1,11 @@
+/Users/wick/workspace/wickStuSpringAI/src/main/java/org/wickai/controller/DocumentController.java
+/Users/wick/workspace/wickStuSpringAI/src/main/java/org/wickai/util/PdfTextExtractor.java
+/Users/wick/workspace/wickStuSpringAI/src/main/java/org/wickai/controller/ChatController.java
+/Users/wick/workspace/wickStuSpringAI/src/main/java/org/wickai/service/ContractInvoiceAnalyzerService.java
+/Users/wick/workspace/wickStuSpringAI/src/main/java/org/wickai/config/DashScopeConfig.java
+/Users/wick/workspace/wickStuSpringAI/src/main/java/org/wickai/util/OcrTextExtractor.java
+/Users/wick/workspace/wickStuSpringAI/src/main/java/org/wickai/springAiApplication.java
+/Users/wick/workspace/wickStuSpringAI/src/main/java/org/wickai/util/FileTextExtractor.java
+/Users/wick/workspace/wickStuSpringAI/src/main/java/org/wickai/service/DocumentService.java
+/Users/wick/workspace/wickStuSpringAI/src/main/java/org/wickai/controller/AnalysisController.java
+/Users/wick/workspace/wickStuSpringAI/src/main/java/org/wickai/service/ChatService.java
