@@ -40,9 +40,8 @@ public class AnalysisController {
         Map<String, Object> response = new HashMap<>();
         ObjectMapper objectMapper = new ObjectMapper();
         String cleanedJson = result.getOutput().getText().replaceAll("^```json\\s*", "").replaceAll("\\s*```$", "");
-        Invoice invoice = objectMapper.readValue(cleanedJson, Invoice.class);
         response.put("status", "success");
-        response.put("data", invoice);
+        response.put("data", objectMapper.readTree(cleanedJson));
         return response;
     }
 
@@ -69,7 +68,7 @@ public class AnalysisController {
         Map<String, Object> response = new HashMap<>();
         ObjectMapper objectMapper = new ObjectMapper();
         String cleanedJson = result.getOutput().getText().replaceAll("^```json\\s*", "").replaceAll("\\s*```$", "");
-         objectMapper.readTree(cleanedJson);
+        objectMapper.readTree(cleanedJson);
         response.put("status", "success");
         response.put("data",objectMapper.readTree(cleanedJson));
         return response;
