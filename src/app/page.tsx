@@ -7,7 +7,7 @@ import styles from "./page.module.css";
 
 export default function Home() {
   // method one : use 阿里api.
-  const queryData = async(_data) => {
+  const queryData = async(_data: any) => {
     try {
       const data = await fetch('https://dashscope.aliyuncs.com/api/v1/apps/5ec6f795a4884adfa3bbb7f8f860dc96/completion', {
         method: 'POST',
@@ -23,8 +23,7 @@ export default function Home() {
       })
 
       const result = await data.json(); 
-      console.log('=========>result', result);
-      console.log('======>text json', JSON.parse(result.output.text) )
+      return result;
 
     } catch(e) {
       console.log('===========>e', e);
@@ -32,48 +31,64 @@ export default function Home() {
 
   }
 
-  // method two: use tesseract.js
   const [text, setText] = useState<string>('');
   const [progress, setProgress] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const canvasRef = useRef(null);
+  const [jsonData, setJsonData] = useState([]);
+  
 
+  const downloadtoCSV = (initData) => {
+    let result = {};
+    // 扁平化处理函数
+    const flattenObject = (obj, prefix = '') => {
+      for (const key in obj) {
+        if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+          const flattened = flattenObject(obj[key], `${prefix}${key}.`);
+          result = {...result, ...flattened};
+        } else if (Array.isArray(obj[key])) {
+          // 处理商品数组
+          obj[key].forEach((item, index) => {
+            const itemFlattened = flattenObject(item, `${prefix}${key}[${index}].`);
+            result = {...result, ...itemFlattened};
+          });
+        } else {
+          result[`${prefix}${key}`] = obj[key];
+        }
+      }
+      return result;
+    }
 
-  // 图片预处理
-//  async function lightweightProcess (file: File) {
-//   const img = await createImageBitmap(file);
+    // 将数据转换为CSV格式
+    const convertToCSV = (data: object) => {
+      const flattenedData = flattenObject(data);
+      const headers = Object.keys(flattenedData);
 
-//   const canvas = document.createElement('canvas');
-//   const ctx = canvas.getContext('2d');
+      // CSV头部s
+      let csv = headers.map(header => `"${header}"`).join(',') + '\n';
+      // CSV 数据行
+      const row = headers.map(header => {
+        const value = flattenedData[header] !== undefined ? flattenedData[header] : '';
+        // 处理值中的逗号和引号
+        return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value;
+      });
+      csv += row.join(',') + '\n';
+      return csv;
+    }
 
-//   if(!ctx) {throw new Error('无法获取canvas上下文')};
-//   canvas.width = img.width;
-//   canvas.height = img.height;
+    const content = convertToCSV(jsonData);
+    console.log('=========>content', content);
+    const blob = new Blob([content], {type: 'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const data = new Date().toISOString().slice(0, 10);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `发票数据-${data}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-//   ctx.drawImage(img, 0, 0);
-//   const imageData = ctx.getImageData(0,0, canvas.width, canvas.height);
-//   const data = imageData.data;
-//   // 简单灰度化和对比度增强
-//   for(let i = 0; i < data.length; i += 4) {
-//     // 灰度化
-//     const r = data[i];
-//     const g = data[i + 1];
-//     const b = data[i + 2];
-//     const gray = 0.299 *  r + 0.578 * g + 0.114 * b;
-//     // const gray = (r + g + b) / 3;
-//     // 对比度增强
-//     // const contrast = 1.5;
-//     // const adjusted = Math.min(255, Math.max(0, (gray - 128) * contrast + 128));
-//     //二值化(简单阈值)
-//     // const threshold = 150;
-//     // const binary = adjusted > threshold ? 255 : 0;
-
-//     data[i] = data[i + 1] = data[i + 2] = gray;
-//     // data[i + 3] = 255; // Alpha通道f
-//   }
-//   ctx.putImageData(imageData, 0, 0);
-//   return canvas.toDataURL('image/jpeg');
-// }
+  }
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -84,46 +99,40 @@ export default function Home() {
       // const processeUrl = await lightweightProcess(file);
       const scheduler = createScheduler();
       const worker1 = await createWorker('chi_sim');
-      const worker2 = await createWorker('chi_sim');
+      // const worker2 = await createWorker('chi_sim');
       scheduler.addWorker(worker1);
-      scheduler.addWorker(worker2);
+      // scheduler.addWorker(worker2);
       await worker1.setParameters({
         tessedit_pageseg_mode: PSM.AUTO_OSD,
         // tessedit_char_whitelist: '1234567890/-:.年月日',
       })
-      const [data1, data2] = await Promise.all([scheduler.addJob('recognize', file), scheduler.addJob('recognize', file)]);
-      const data = `${data1.data.text} ${data2.data.text}`;
-      debugger
-      setText(data);
-      console.log('=========>data', data);
+      const [data1, data2] = await Promise.all([scheduler.addJob('recognize', file)]);
+      const data = `${data1.data.text}`;
+      setText(data); 
       const result = await queryData(data);
-      debugger
+      setJsonData(JSON.parse(result.output.text))
       await scheduler.terminate();
+      setIsLoading(false)
     } catch(error) {
       console.log('OCR Error: ', error);
-    } finally {
-      setIsLoading(false);
-    }
+    } 
   }
 
 
   return (
     <div className={styles.page}>
-      <h1>OCR with Tesseract.js</h1>
-      {/* <button onClick={queryData}>get data</button> */}
-      <input 
-        type="file"
-        accept="image/*"
-        onChange={handleImageUpload}
-        disabled={isLoading}
-      />
+      <h1>上传图片自动提取表格数据</h1>
+      <div>
+        <input 
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          disabled={isLoading}
+        />
+        <button onClick={downloadtoCSV} disabled={isLoading}>下载  </button>
+      </div>
+     
 
-      {isLoading && (
-        <div>
-          <progress value={progress} max='100' />
-          <span>{progress}%</span>
-        </div>
-      )}
       {text && (
         <div>
           <h2>识别结果</h2>
